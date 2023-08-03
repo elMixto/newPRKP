@@ -1,15 +1,28 @@
 import time
 import logging
 from gurobipy import GRB,Model,quicksum
-from Instance import Instance
+from lib.Instance import Instance
+from enum import Enum,auto
 
-def solve_polynomial_knapsack(instance: Instance, var_type, heuristic: bool, indexes, gap=None, time_limit=None, verbose=False):
-    n_items = len(instance.)
-    items = range(dict_data['n_items'])
-    n_hog = len(dict_data['polynomial_gains'])
+class VAR_TYPE(Enum):
+    CONTINOUS = auto()
+    BINARY = auto()
+
+def solve_polynomial_knapsack(
+        instance: Instance, 
+        var_type: VAR_TYPE, 
+        heuristic: bool, 
+        indexes, 
+        gap=None, 
+        time_limit=None, 
+        verbose=False):
+
+    n_items = instance.n_items
+    items = range(instance.n_items)
+    n_hog = len(instance.polynomial_gains)
     hogs = range(n_hog)
     
-    if var_type == 'continuous':
+    if var_type == VAR_TYPE.CONTINOUS:
         var_type = GRB.CONTINUOUS
     else:
         var_type = GRB.BINARY
@@ -18,39 +31,40 @@ def solve_polynomial_knapsack(instance: Instance, var_type, heuristic: bool, ind
     logging.info("{}".format(problem_name))
 
     model = Model(problem_name)
-
     X = model.addVars(n_items,lb=0,ub=1,vtype=var_type,name='X')  
     Z = model.addVars(n_hog,lb=0,ub=1,vtype=var_type,name='Z')
     Pi = model.addVars(n_items,lb=0,vtype=GRB.CONTINUOUS,name='Pi')
     Rho = model.addVar(lb=0,vtype=GRB.CONTINUOUS,name='Rho')
 
-    obj_funct = quicksum(dict_data['profits'][i] * X[i] for i in items)
-    for h, key in enumerate(dict_data['polynomial_gains']):
-        obj_funct += dict_data['polynomial_gains'][key] * Z[h]
-    obj_funct -= quicksum(dict_data['costs'][i][0] * X[i] for i in items)
-    obj_funct -= (dict_data['gamma'] * Rho + quicksum(Pi[i] for i in items))
+    obj_funct = quicksum(instance.profits[i] * X[i] for i in items)
+    for h, key in enumerate(instance.polynomial_gains):
+        obj_funct += instance.polynomial_gains[key] * Z[h]
+    obj_funct -= quicksum(instance.costs[i][0] * X[i] for i in items)
+    obj_funct -= (instance.gamma * Rho + quicksum(Pi[i] for i in items))
     model.setObjective(obj_funct, GRB.MAXIMIZE)
 
     #CONSTRAINS
     model.addConstr(
-         quicksum(dict_data['costs'][i][0] * X[i] for i in items) + dict_data['gamma']*Rho + quicksum(Pi[i] for i in items) <= dict_data['budget'],
+         quicksum(instance.costs[i][0] * X[i] for i in items) 
+         + instance.gamma*Rho 
+         + quicksum(Pi[i] for i in items) <= instance.budget,
         "budget_limit"
     )
 
     for i in items:
         model.addConstr(
-            Rho + Pi[i] >= (dict_data['costs'][i][1]-dict_data['costs'][i][0]) * X[i],
+            Rho + Pi[i] >= (instance.costs[i][1]-instance.costs[i][0]) * X[i],
             "duality_{}".format(i)
         )
 
-    for h, k in enumerate(dict_data['polynomial_gains']):
+    for h, k in enumerate(instance.polynomial_gains):
         k=k.replace("(","").replace(")","").replace("'","").split(",")
         key=[]
         for i in k:
             key.append(int(i))
         key=tuple(key)
         #print("",dict_data['polynomial_gains'][str(key)],"\n",key,"\n")
-        if dict_data['polynomial_gains'][str(key)] > 0:
+        if instance.polynomial_gains[str(key)] > 0:
             model.addConstr(
                 quicksum(X[i] for i in key) >= len(key) * Z[h],
                 "hog {}".format(h)

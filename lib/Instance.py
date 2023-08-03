@@ -6,27 +6,32 @@ from dataclasses import dataclass
 import math
 import json
 
+@dataclass
 class Instance:
-    def __init__(self) -> None:
-        pass
-    
+    n_items: int
+    gamma: int
+    budget: float
+    profits: list[int]
+    costs: list[list[int]]
+    polynomial_gains: dict[set[int],int]
+
     def evaluate(self):
         pass
 
     @classmethod
     def from_file(cls,json_file: dict):
         """Carga la instancia desde un archivo .json"""
+        json_file = json.load(open(json_file))
         logging.info("Loading instance")
-        self = cls()
-        self.gamma = json_file['gamma']
-        self.budget = json_file['budget']
-        self.sizes = np.around(np.random.uniform(json_file['n_items']))
-        self.profits = json_file['profits']
-        self.costs = json_file['costs']
-        self.polynomial_gains = json_file['polynomial_gains']
-        self.n_items = json_file['n_items']
+        gamma = json_file['gamma']
+        budget = json_file['budget']
+        sizes = np.around(np.random.uniform(json_file['n_items']))
+        profits = json_file['profits']
+        costs = json_file['costs']
+        polynomial_gains = json_file['polynomial_gains']
+        n_items = json_file['n_items']
         logging.info("simulation end")
-        return self
+        return cls(n_items,gamma,budget,profits,costs,polynomial_gains)
 
     def save(self,folder_path: str | Path)-> None:
         """Guarda la instancia en una ruta (Para guardar en el directorio de trabajo usar \"/.\")"""
