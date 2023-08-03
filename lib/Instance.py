@@ -5,6 +5,7 @@ from pathlib import Path
 from dataclasses import dataclass
 import math
 import json
+import requests
 
 @dataclass
 class Instance:
@@ -15,13 +16,21 @@ class Instance:
     costs: list[list[int]]
     polynomial_gains: dict[set[int],int]
 
+    def remote_solve(self,host: str):
+        response = requests.post(host,json=self.__dict__)
+        return json.loads(response.content.decode())
+
     def evaluate(self):
         pass
 
     @classmethod
-    def from_file(cls,json_file: dict):
-        """Carga la instancia desde un archivo .json"""
+    def from_file(cls,json_file):
         json_file = json.load(open(json_file))
+        return cls.from_dict(json_file)
+
+    @classmethod
+    def from_dict(cls,json_file: str):
+        """Carga la instancia desde un archivo .json"""
         logging.info("Loading instance")
         gamma = json_file['gamma']
         budget = json_file['budget']
