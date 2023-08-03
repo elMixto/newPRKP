@@ -9,7 +9,7 @@ app = Flask(__name__)
 @app.route("/",methods = ["POST"])
 def solve():
     data = request.json
-    instance = Instance.from_file(data)    
+    instance = Instance.from_dict(data)    
     return jsonify(solve_polynomial_knapsack(instance,VAR_TYPE.BINARY,False,[]))
 
 asgiapp = WsgiToAsgi(app)
