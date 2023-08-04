@@ -49,8 +49,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
-
-data/*.json
+#data/*.json
 
 # Translations
 *.mo
