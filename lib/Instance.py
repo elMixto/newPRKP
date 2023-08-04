@@ -1,11 +1,18 @@
 import logging
-import numpy as np
 import random
 from pathlib import Path
 from dataclasses import dataclass
 import math
 import json
-import requests
+from hashlib import sha1
+import numpy as np
+
+
+@dataclass
+class Solution:
+    objective: float
+    sol: list[bool]
+    comp_time: float
 
 @dataclass
 class Instance:
@@ -16,16 +23,15 @@ class Instance:
     costs: list[list[int]]
     polynomial_gains: dict[set[int],int]
 
-    def remote_solve(self,host: str):
-        response = requests.post(host,json=self.__dict__)
-        return json.loads(response.content.decode())
+    #Estas cosas son para resolver de forma optima
 
     def evaluate(self):
         pass
 
     @classmethod
     def from_file(cls,json_file):
-        json_file = json.load(open(json_file))
+        with open(json_file,"r",encoding="utf8") as f:
+            json_file = json.load(f)
         return cls.from_dict(json_file)
 
     @classmethod
@@ -34,7 +40,6 @@ class Instance:
         logging.info("Loading instance")
         gamma = json_file['gamma']
         budget = json_file['budget']
-        sizes = np.around(np.random.uniform(json_file['n_items']))
         profits = json_file['profits']
         costs = json_file['costs']
         polynomial_gains = json_file['polynomial_gains']
@@ -44,8 +49,8 @@ class Instance:
 
     def save(self,folder_path: str | Path)-> None:
         """Guarda la instancia en una ruta (Para guardar en el directorio de trabajo usar \"/.\")"""
-        file = open(folder_path + str(self) + ".json",'w')
-        json.dump(self.__dict__,file)
+        with open(folder_path + str(self) + ".json",'w',encoding="utf8") as file:
+            json.dump(self.__dict__,file)
 
     def to_json_string(self)->str:
         return json.dumps(self.__dict__)
@@ -57,7 +62,7 @@ class Instance:
             random.seed(43)
         else:
             random.seed(seed)
-        instance = cls()
+        instance = Instance(None,None,None,None,None,None)
         instance.n_items = n_items
         instance.gamma = gamma
         matrix_costs = np.zeros((n_items, 2), dtype=float)
@@ -104,23 +109,11 @@ class Instance:
         return instance
 
     def _id(self):
-        from hashlib import sha1
         return str(sha1(self.to_json_string().encode()).hexdigest())
 
     def __hash__(self) -> int:
-        hash(self._id())
+        return hash(self._id())
 
     def __str__(self) -> str:
         return f"Instance_{self.n_items}_{self.gamma}_{round(self.budget,3)}"
-
-if __name__ == "__main__":
-    """Esta cosa para manejar tests"""
-    test_file = "/home/mixto/repositories/PRKP/data/S_900_324_5669.147.json"
-    file = json.load(open(test_file,'r'))
-    instance = Instance.from_file(file)
-    instance.save("")
-    random_instance = Instance.generate(n_items = 1000,gamma=10,seed=10)
-    random_instance.save("")
-    print(instance._id)
-
     
