@@ -1,8 +1,8 @@
+from gurobipy import GRB,Model,quicksum
 import time
 import logging
-from gurobipy import GRB,Model,quicksum
 from enum import Enum,auto
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from src.data_structures import Instance
 
@@ -16,9 +16,9 @@ class SolverConfig:
     var_type: VAR_TYPE
     heuristic: bool
     indexes:list[bool]
-    gap: float | None
-    time_limit: float | None
-    verbose: bool
+    gap: float | None = field(default=None)
+    time_limit: float | None = field(default=None)
+    verbose: bool = field(default=False)
     
     @classmethod
     def optimal(cls):

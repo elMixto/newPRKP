@@ -7,17 +7,18 @@ import os
 import random
 from copy import deepcopy
 import itertools
-import time as t	
+import time as t
+from src.data_structures import Instance
 
-class GAHeuristic(object):
-	def __init__(self, contSolution, data, n_chromosomes, penalization, weight):
+class GAHeuristic:
+	def __init__(self, contSolution, instance: Instance, n_chromosomes, penalization, weight):
 		self.contSolution = contSolution
-		self.data = data
-		self.items = list(range(data['n_items']))
-		self.items.sort(key = lambda x: data['costs'][x][1] - data['costs'][x][0], reverse = True)
+		self.instance = instance
+		self.items = list(range(instance.n_items))
+		self.items.sort(key = lambda x: instance.costs[x][1] - instance.costs[x][0], reverse = True)
 		self.solution = []
 		self.population = []
-		synWork=[key.replace("(","").replace(")","").replace("'","").split(",") for key in self.data['polynomial_gains'].keys()]
+		synWork=[key.replace("(","").replace(")","").replace("'","").split(",") for key in self.instance.polynomial_gains.keys()]
 		self.synSet=[set(map(int,k)) for k in synWork]
 		self.counterInf=0
 		self.n_chromosomes=n_chromosomes
@@ -34,20 +35,20 @@ class GAHeuristic(object):
 		"""
 		of = 0
 		investments = [i for i in range(0,len(chromosome)) if chromosome[i]=='1']	
-		investments.sort(key = lambda x: self.data['costs'][x][1] - self.data['costs'][x][0], reverse = True)
+		investments.sort(key = lambda x: self.instance.costs[x][1] - self.instance.costs[x][0], reverse = True)
 		# CHECK FOR FEASIBILITY
-		upperCosts = np.sum([self.data['costs'][x][1] for x in investments[:self.data['gamma']]])
-		nominalCosts = np.sum([self.data['costs'][x][0] for x in investments[self.data['gamma']:]])
+		upperCosts = np.sum([self.instance.costs[x][1] for x in investments[:self.instance.gamma]])
+		nominalCosts = np.sum([self.instance.costs[x][0] for x in investments[self.instance.gamma:]])
 		# IF FEASIBLE, CALCULATE THE OBJECTIVE FUNCTION
-		if upperCosts + nominalCosts <= self.data['budget']:
-			of += np.sum([self.data['profits'][x] for x in investments])
+		if upperCosts + nominalCosts <= self.instance.budget:
+			of += np.sum([self.instance.profits[x] for x in investments])
 			of -= upperCosts
 			of -= nominalCosts
 			investments=set(investments)
 			for it in range(len(self.synSet)):
 				syn=self.synSet[it]
 				if syn.issubset(investments):
-					of += self.data['polynomial_gains'][list(self.data['polynomial_gains'].keys())[it]]
+					of += self.instance.polynomial_gains[list(self.instance.polynomial_gains.keys())[it]]
 		# IF INFEASIBLE, RETURN -1
 		else:
 			of = -1
@@ -85,8 +86,10 @@ class GAHeuristic(object):
 		self.counterInf=0
 		self.population.sort(key = lambda x: self.fitnessScore(x), reverse = True)
 		self.population = deepcopy(self.population[:int(self.n_chromosomes/(2**counter))])
-		if counter==0 and len(self.population)==1:
-			self.population += list(map(self.mapping,list(itertools.combinations(self.population[0],len(self.population[0])-1))))
+		
+		### La funcion self.mapping no existe 0.0!!! Pero al parecer este if no se ejecuta por el momento
+		#if counter==0 and len(self.population)==1:
+		#	self.population += list(map(self.mapping,list(itertools.combinations(self.population[0],len(self.population[0])-1))))
 
 	def crossover(self):
 		""" combine the genetic information of two parents to generate new offspring
@@ -99,9 +102,9 @@ class GAHeuristic(object):
 		newpopulation = []
 		couples = list(itertools.combinations(self.population,2))
 		for chromosome1, chromosome2 in couples:
-			crossoverPoint = random.randint(0, len(chromosome1))
-			newpopulation.append(chromosome1[:crossoverPoint] + chromosome2[crossoverPoint:])
-			newpopulation.append(chromosome2[:crossoverPoint] + chromosome1[crossoverPoint:])
+			crossover_point = random.randint(0, len(chromosome1))
+			newpopulation.append(chromosome1[:crossover_point] + chromosome2[crossover_point:])
+			newpopulation.append(chromosome2[:crossover_point] + chromosome1[crossover_point:])
 		self.population = deepcopy(self.population + newpopulation)
 
 	def mutation(self):
@@ -113,9 +116,9 @@ class GAHeuristic(object):
 			none
 		"""
 		for chromosome in self.population:
-			mutationPoint = random.randint(0, len(chromosome)-1)
+			mutation_point = random.randint(0, len(chromosome)-1)
 			chromosome = list(chromosome)
-			chromosome[mutationPoint] = str(int(not bool(int(chromosome[mutationPoint]))))
+			chromosome[mutation_point] = str(int(not bool(int(chromosome[mutation_point]))))
 			chromosome = ''.join(chromosome)
 
 	def run(self):

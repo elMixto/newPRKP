@@ -1,6 +1,6 @@
 import unittest
 from src.data_structures.Instance import Instance
-from src.solver import SolverCollection
+from src.solvers.collection import SolverCollection
 
 class TestStringMethods(unittest.TestCase):
 
