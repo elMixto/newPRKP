@@ -1,6 +1,6 @@
-from lib.heuristic import Heuristic
+from src.heuristic import Heuristic
 from pathlib import Path
-from lib.Instance import Instance
+from src.Instance import Instance
 from config import REMOTE_SOLVER_HOST
 
 def main():

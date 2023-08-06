@@ -2,7 +2,7 @@ from ..data_structures.Instance import Instance
 import requests
 import json
 from config import REMOTE_SOLVER_HOST
-from ..gurobi_solver import SolverConfig,solve_polynomial_knapsack,VAR_TYPE
+from src.solvers.gurobi import SolverConfig,solve_polynomial_knapsack,VAR_TYPE
 class SolverCollection:
     
     @staticmethod

@@ -1,12 +1,10 @@
 import time
 import logging
 from gurobipy import GRB,Model,quicksum
-from lib.data_structures.Instance import Instance
 from enum import Enum,auto
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-
-
+from src.data_structures import Instance
 
 class VAR_TYPE(Enum):
     CONTINOUS = auto()
@@ -21,7 +19,6 @@ class SolverConfig:
     gap: float | None
     time_limit: float | None
     verbose: bool
-
 
     @classmethod
     def optimal(cls):
