@@ -1,35 +1,47 @@
 import time
 import logging
 from gurobipy import GRB,Model,quicksum
-from lib.Instance import Instance
+from lib.data_structures.Instance import Instance
 from enum import Enum,auto
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
+
+
 
 class VAR_TYPE(Enum):
     CONTINOUS = auto()
     BINARY = auto()
 
-def solve_polynomial_knapsack(
-        instance: Instance, 
-        var_type: VAR_TYPE, 
-        heuristic: bool, 
-        indexes, 
-        gap=None, 
-        time_limit=None, 
-        verbose=False):
+@dataclass_json
+@dataclass
+class SolverConfig:
+    var_type: VAR_TYPE
+    heuristic: bool
+    indexes:list[bool]
+    gap: float | None
+    time_limit: float | None
+    verbose: bool
+
+
+    @classmethod
+    def optimal(cls):
+        return cls(VAR_TYPE.BINARY,False,[],None,None,False)
+
+
+def solve_polynomial_knapsack(instance: Instance, solver_config: SolverConfig):
 
     n_items = instance.n_items
     items = range(instance.n_items)
     n_hog = len(instance.polynomial_gains)
     hogs = range(n_hog)
     
-    if var_type == VAR_TYPE.CONTINOUS:
+    if solver_config.var_type == VAR_TYPE.CONTINOUS:
         var_type = GRB.CONTINUOUS
     else:
         var_type = GRB.BINARY
 
     problem_name = "polynomial_knapsack"
     logging.info("{}".format(problem_name))
-
     model = Model(problem_name)
     X = model.addVars(n_items,lb=0,ub=1,vtype=var_type,name='X')  
     Z = model.addVars(n_hog,lb=0,ub=1,vtype=var_type,name='Z')
@@ -74,19 +86,19 @@ def solve_polynomial_knapsack(
                 quicksum(X[i] for i in key) <= len(key) - 1 + Z[h],
                 "hog {}".format(h)
             )
-    if heuristic:
-        for i in indexes:
+    if solver_config.heuristic:
+        for i in solver_config.indexes:
             model.addConstr(
                 X[i] >= 1, "mathheur_constr{}".format(i)
             )
 
 
     model.update()
-    if gap:
-        model.setParam('MIPgap', gap)
-    if time_limit:
-        model.setParam(GRB.Param.TimeLimit, time_limit)
-    if verbose:
+    if solver_config.gap:
+        model.setParam('MIPgap', solver_config.gap)
+    if solver_config.time_limit:
+        model.setParam(GRB.Param.TimeLimit, solver_config.time_limit)
+    if solver_config.verbose:
         model.setParam('OutputFlag', 1)
     else:
         model.setParam('OutputFlag', 0)

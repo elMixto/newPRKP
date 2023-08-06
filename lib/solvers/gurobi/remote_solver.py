@@ -1,7 +1,7 @@
 from flask import Flask,request
 from asgiref.wsgi import WsgiToAsgi
 from flask import jsonify
-from lib.gurobi_solver import solve_polynomial_knapsack,VAR_TYPE,SolverConfig
+from lib.solvers.gurobi.gurobi_solver import solve_polynomial_knapsack,VAR_TYPE,SolverConfig
 from lib.data_structures.Instance import Instance
 
 app = Flask(__name__)

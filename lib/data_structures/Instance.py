@@ -6,8 +6,9 @@ import math
 import json
 from hashlib import sha1
 import numpy as np
+from dataclasses_json import dataclass_json
 
-
+@dataclass_json
 @dataclass
 class Solution:
     objective: float
