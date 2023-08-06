@@ -19,7 +19,7 @@ class SolverConfig:
     gap: float | None
     time_limit: float | None
     verbose: bool
-
+    
     @classmethod
     def optimal(cls):
         return cls(VAR_TYPE.BINARY,False,[],None,None,False)

@@ -10,11 +10,11 @@ class SolverCollection:
         return solve_polynomial_knapsack(instance,solver_config)
 
     @staticmethod
-    def gurobi_remote(instance: Instance,solver_config: SolverConfig ):
+    def gurobi_remote(instance: Instance,solver_config: SolverConfig = SolverConfig.optimal() ):
         host = REMOTE_SOLVER_HOST
         data = {"instance": instance.to_json_string(),
                 "solver_config": solver_config.to_json()
                 }
-        response = requests.post(host,json=instance.__dict__)
+        response = requests.post(host,json=data)
         return json.loads(response.content.decode())
     
