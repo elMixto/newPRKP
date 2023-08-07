@@ -5,11 +5,12 @@ from config import REMOTE_SOLVER_HOST
 from src.solvers.gurobi import SolverConfig,solve_polynomial_knapsack,VAR_TYPE
 from src.solvers.ga.GAHeuristic import GAHeuristic
 from time import time
-
+from pathlib import Path
+import pickle
 class SolverCollection:
     
     @staticmethod
-    def gurobi_local(instance: Instance, solver_config: SolverConfig):
+    def gurobi_local(instance: Instance, solver_config: SolverConfig = SolverConfig.optimal()):
         return solve_polynomial_knapsack(instance,solver_config)
 
     @staticmethod
@@ -41,4 +42,18 @@ class SolverCollection:
         solGA, objfun = ga_solver.run()
         solGA = list(map(lambda x: int(x), list(solGA)))
         return objfun,solGA, time() - start
+    
+    @staticmethod
+    def baldo_ML(instance: Instance):
+        model_file = Path("/home/mixto/PRKP/src/solvers/MLHeu/model_data/finalized_model_rTrees.sav")
+        n_features = 6
+        fixed_percentage = 0.85
+        clf = pickle.load(open(model_file, 'rb'))
+        of, sol_cont, comp_time = solve_polynomial_knapsack(instance, SolverConfig(VAR_TYPE.CONTINOUS,False,[]))
+        from src.solvers.MLHeu.functions_ml import prepare_set,fix_variables
+        X = prepare_set(n_features,instance, sol_cont)
+        y_mlProba = clf.predict_proba(X)		
+        y_ml = fix_variables(instance.n_items, y_mlProba, fixed_percentage)
+        discrete_config = SolverConfig(VAR_TYPE.BINARY,True,y_ml)
+        return solve_polynomial_knapsack(instance,discrete_config)
     

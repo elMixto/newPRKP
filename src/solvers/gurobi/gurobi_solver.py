@@ -84,10 +84,17 @@ def solve_polynomial_knapsack(instance: Instance, solver_config: SolverConfig):
                 "hog {}".format(h)
             )
     if solver_config.heuristic:
-        for i in solver_config.indexes:
-            model.addConstr(
-                X[i] >= 1, "mathheur_constr{}".format(i)
-            )
+        for index, i in enumerate(solver_config.indexes):
+            if i == -1:
+                continue
+            elif i == 1:
+                model.addConstr(
+                    X[index] >= 1, "mathheur_constr{}".format(i)
+                )
+            elif i == 0:
+                model.addConstr(
+                    X[index] == 0, "mathheur_constr{}".format(i)
+                )
 
 
     model.update()
