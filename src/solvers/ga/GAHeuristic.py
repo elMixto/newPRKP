@@ -87,9 +87,11 @@ class GAHeuristic:
 		self.population.sort(key = lambda x: self.fitnessScore(x), reverse = True)
 		self.population = deepcopy(self.population[:int(self.n_chromosomes/(2**counter))])
 		
-		### La funcion self.mapping no existe 0.0!!! Pero al parecer este if no se ejecuta por el momento
-		#if counter==0 and len(self.population)==1:
-		#	self.population += list(map(self.mapping,list(itertools.combinations(self.population[0],len(self.population[0])-1))))
+		if counter == 0 and len(self.population) == 1:
+			self.population += list(map(self.mapping,list(itertools.combinations(self.population[0],len(self.population[0])-1))))
+	
+	def mapping(self,elem):
+			return "".join(elem)
 
 	def crossover(self):
 		""" combine the genetic information of two parents to generate new offspring

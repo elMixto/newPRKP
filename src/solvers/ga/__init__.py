@@ -1,1 +1,1 @@
-from GAHeuristic import GAHeuristic
+from .GAHeuristic import GAHeuristic
