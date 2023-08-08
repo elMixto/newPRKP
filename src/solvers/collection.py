@@ -33,7 +33,6 @@ class SolverCollection:
         except:
             pass
 
-
     @staticmethod
     def baldo_GA(instance: Instance, n_chromosomes: int = 70, penalization: float = 0.03, weight: float = 0.6):
         start = time()
@@ -54,6 +53,9 @@ class SolverCollection:
         X = prepare_set(n_features,instance, sol_cont)
         y_mlProba = clf.predict_proba(X)		
         y_ml = fix_variables(instance.n_items, y_mlProba, fixed_percentage)
+        print(y_ml)
         discrete_config = SolverConfig(VAR_TYPE.BINARY,True,y_ml)
         return solve_polynomial_knapsack(instance,discrete_config)
+        #Agregar un sistema iterativo
+        #Crear caracteristicas automaticas
     

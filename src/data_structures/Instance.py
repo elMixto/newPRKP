@@ -7,6 +7,7 @@ import json
 from hashlib import sha1
 import numpy as np
 from dataclasses_json import dataclass_json
+from functools import lru_cache
 
 @dataclass_json
 @dataclass
@@ -25,7 +26,12 @@ class Instance:
     polynomial_gains: dict[set[int],int]
 
     #Estas cosas son para resolver de forma optima
-
+    
+    @property
+    @lru_cache
+    def gains(self):
+        return len(self.polynomial_gains)
+    
     def evaluate(self):
         pass
 
@@ -116,5 +122,4 @@ class Instance:
         return hash(self._id())
 
     def __str__(self) -> str:
-        return f"Instance_{self.n_items}_{self.gamma}_{round(self.budget,3)}"
-    
+        return f"Instance_{self.n_items}_{self.gamma}_{round(self.budget,3)}_{self.gains}"
