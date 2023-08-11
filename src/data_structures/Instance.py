@@ -1,20 +1,15 @@
 import logging
 import random
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 import json
 from hashlib import sha1
 import numpy as np
 from dataclasses_json import dataclass_json
 from functools import lru_cache
+from time import time
 
-@dataclass_json
-@dataclass
-class Solution:
-    objective: float
-    sol: list[bool]
-    comp_time: float
 
 @dataclass
 class Instance:
@@ -24,6 +19,9 @@ class Instance:
     profits: list[int]
     costs: list[list[int]]
     polynomial_gains: dict[set[int],int]
+    optimal_solution: None | list[bool] = field(default=None)
+    optimal_objective: None | float = field(default=None)
+
 
     #Estas cosas son para resolver de forma optima
     
@@ -35,11 +33,32 @@ class Instance:
     def evaluate(self):
         pass
 
+
+    @staticmethod
+    def key_to_set(k0):
+        input_string = k0
+        cleaned_string = input_string.replace("(", "").replace(")", "").replace(" ", "")
+        number_strings = cleaned_string.split(",")
+        return set(int(num) for num in number_strings)
+    
+    def precalcs(self):
+        self.syns = [[0,0]] * self.n_items
+        for pol_gain, value in self.polynomial_gains.items():
+            if value < 0:
+                reference = 0
+            else:
+                reference = 1
+            for item in self.key_to_set(pol_gain):
+                self.syns[item][reference] += 1
+
+    #Loader classes
     @classmethod
     def from_file(cls,json_file):
         with open(json_file,"r",encoding="utf8") as f:
             json_file = json.load(f)
-        return cls.from_dict(json_file)
+        output = cls.from_dict(json_file)
+        output.created_time = time()
+        return output
 
     @classmethod
     def from_dict(cls,json_file: str):
@@ -55,12 +74,18 @@ class Instance:
         return cls(n_items,gamma,budget,profits,costs,polynomial_gains)
 
     def save(self,folder_path: str | Path)-> None:
-        """Guarda la instancia en una ruta (Para guardar en el directorio de trabajo usar \"/.\")"""
+        """Guarda la instancia en una ruta (Para guardar en el directorio de trabajo usar \"/\")"""
         with open(folder_path + str(self) + ".json",'w',encoding="utf8") as file:
             json.dump(self.__dict__,file)
 
     def to_json_string(self)->str:
-        return json.dumps(self.__dict__)
+        output = self.__dict__
+        a = output['optimal_solution']
+        if a is None:
+            return json.dumps(output)
+        else:
+            output['optimal_solution'] = a
+            return json.dumps(output)
 
     @classmethod
     def generate(cls,n_items: int,gamma: int, seed=None)-> 'Instance':
@@ -69,7 +94,9 @@ class Instance:
             random.seed(43)
         else:
             random.seed(seed)
+        
         instance = Instance(None,None,None,None,None,None)
+        instance.created_time = time()
         instance.n_items = n_items
         instance.gamma = gamma
         matrix_costs = np.zeros((n_items, 2), dtype=float)
@@ -119,7 +146,7 @@ class Instance:
         return str(sha1(self.to_json_string().encode()).hexdigest())
 
     def __hash__(self) -> int:
-        return hash(self._id())
+        return hash(self.__str__)
 
     def __str__(self) -> str:
-        return f"Instance_{self.n_items}_{self.gamma}_{round(self.budget,3)}_{self.gains}"
+        return f"Instance_{self.n_items}_{self.gamma}_{round(self.budget,3)}_{self.gains}_{self.created_time}"

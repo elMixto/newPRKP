@@ -23,6 +23,10 @@ class SolverConfig:
     @classmethod
     def optimal(cls):
         return cls(VAR_TYPE.BINARY,False,[],None,None,False)
+    
+    @classmethod
+    def continous(cls):
+        return cls(VAR_TYPE.CONTINOUS,False,[],None,None,False)
 
 
 def solve_polynomial_knapsack(instance: Instance, solver_config: SolverConfig):
