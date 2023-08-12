@@ -30,9 +30,35 @@ class Instance:
     def gains(self):
         return len(self.polynomial_gains)
     
-    def evaluate(self):
-        pass
-
+    def evaluate(self,sol):
+        """ calculate the score of each possible solution
+		Args: 
+			chromosome: a possible solution
+		Return: 
+			of: value of the objective function of this chromosome
+		"""
+        syn_work=[key.replace("(","").replace(")","").replace("'","").split(",") for key in self.polynomial_gains.keys()]
+        synSet = [set(map(int,k)) for k in syn_work]
+        of = 0
+        investments = [i for i in range(0,len(sol)) if sol[i] == 1]	
+        investments.sort(key = lambda x: self.costs[x][1] - self.costs[x][0], reverse = True)
+        # CHECK FOR FEASIBILITY
+        upperCosts = np.sum([self.costs[x][1] for x in investments[:self.gamma]])
+        nominalCosts = np.sum([self.costs[x][0] for x in investments[self.gamma:]])
+        # IF FEASIBLE, CALCULATE THE OBJECTIVE FUNCTION
+        if upperCosts + nominalCosts <= self.budget:
+            of += np.sum([self.profits[x] for x in investments])
+            of -= upperCosts
+            of -= nominalCosts
+            investments=set(investments)
+            for it in range(len(synSet)):
+                syn=synSet[it]
+                if syn.issubset(investments):
+                    of += self.polynomial_gains[list(self.polynomial_gains.keys())[it]]
+        # IF INFEASIBLE, RETURN -1
+        else:
+            of = -1
+        return of
 
     @staticmethod
     def key_to_set(k0):
@@ -41,15 +67,17 @@ class Instance:
         number_strings = cleaned_string.split(",")
         return set(int(num) for num in number_strings)
     
+    @lru_cache
     def precalcs(self):
-        self.syns = [[0,0]] * self.n_items
+        syns = [list([0,0]) for i in range(self.n_items)]
         for pol_gain, value in self.polynomial_gains.items():
             if value < 0:
                 reference = 0
             else:
                 reference = 1
             for item in self.key_to_set(pol_gain):
-                self.syns[item][reference] += 1
+                syns[item][reference] += 1
+        return syns
 
     #Loader classes
     @classmethod

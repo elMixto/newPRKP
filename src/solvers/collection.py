@@ -87,7 +87,8 @@ class SolverCollection:
         if deepl.learner is None:
             deepl.train(deepl.training_data)
         features = deepl.features(instance)
-        features_pd = pd.DataFrame(features,columns=["o","cont_sol","profit","l_cost","u_cost"])
+        features_pd = pd.DataFrame(features,
+                                   columns=["p_syn","profit","l_cost","u_cost"])
         test_dl = deepl.learner.dls.test_dl(features_pd)
         preds, _ = deepl.learner.get_preds(dl=test_dl,reorder=True)
         y_ml = fix_variables(instance.n_items, preds, 0.85)

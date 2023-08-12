@@ -3,6 +3,7 @@ from fastai.tabular.all import RandomSplitter,TabularPandas,CategoryBlock,accura
 from fastai.tabular.all import Learner
 import pandas as pd
 import numpy as np
+from functools import lru_cache
 
 def singleton(class_):
     instances = {}
@@ -24,7 +25,7 @@ class DLHeu:
             print(f"Solving {i}")
             instance = Instance.generate(100,10,seed=i*2)
             features =	self.training_features(instance)
-            data = pd.DataFrame(features,columns=["o","cont_sol","profit","l_cost","u_cost","is_in_opt_sol"])
+            data = pd.DataFrame(features,columns=["p_syn","profit","l_cost","u_cost","is_in_opt_sol"])
             if features_df is None:
                 features_df = data
             else:
@@ -39,27 +40,29 @@ class DLHeu:
                 splits = splits,
                 procs = [],
                 cat_names = [],
-                cont_names = ["o","cont_sol","profit","l_cost","u_cost"],
+                cont_names = ["p_syn","profit","l_cost","u_cost"],
                 y_names =["is_in_opt_sol"],
                 y_block = CategoryBlock()
                 ).dataloaders(path=".",bs=64)
-        learn = tabular_learner(dls,metrics=accuracy,layers=[5])
+        learn = tabular_learner(dls,metrics=accuracy,layers=[100,100,100])
         a = learn.lr_find(suggest_funcs=(slide, valley),stop_div=False)
-        learn.fit(5,lr=(a[1]+a[0])/2)
+        learn.fit(20,lr=(a[1]+a[0])/2)
         self.learner = learn
         return learn
     
     @staticmethod
+    @lru_cache
     def training_features(self: Instance):
         from src.solvers.collection import SolverCollection,SolverConfig,VAR_TYPE
         optimal_solution = SolverCollection.gurobi(self,SolverConfig(VAR_TYPE.BINARY,False,[]))
-        continuous_solution = SolverCollection.gurobi(self,SolverConfig(VAR_TYPE.CONTINOUS,False,[]))
-
+        #continuous_solution = SolverCollection.gurobi(self,SolverConfig(VAR_TYPE.CONTINOUS,False,[]))
         items = []
+        synergies = self.precalcs()
         for i in range(self.n_items):
             feature_array = np.array([
-                                        self.profits[i]/continuous_solution.o,
-                                        continuous_solution.sol[i],
+                                        synergies[i][1]/self.n_items,
+         #                               self.profits[i]/continuous_solution.o,
+          #                              continuous_solution.sol[i],
                                         self.profits[i]/self.budget,
                                         self.costs[i][0]/self.budget,
                                         self.costs[i][1]/self.budget,
@@ -71,12 +74,15 @@ class DLHeu:
     @staticmethod
     def features(self: Instance):
         from src.solvers.collection import SolverCollection,SolverConfig,VAR_TYPE
-        continuous_sol = SolverCollection.gurobi(self,SolverConfig(VAR_TYPE.CONTINOUS,False,[]))
+        #continuous_sol = SolverCollection.gurobi(self,SolverConfig(VAR_TYPE.CONTINOUS,False,[]))
         items = []
+        synergies = self.precalcs()
         for i in range(self.n_items):
             feature_array = np.array([
-                                        self.profits[i]/continuous_sol.o,
-                                        continuous_sol.sol[i],
+                                        synergies[i][1]/self.n_items,
+                                        #self.profits[i]/self.budget,
+                                        #self.profits[i]/continuous_sol,
+                                        #continuous_sol.sol[i],
                                         self.profits[i]/self.budget,
                                         self.costs[i][0]/self.budget,
                                         self.costs[i][1]/self.budget,
