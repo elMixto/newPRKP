@@ -9,6 +9,7 @@ import numpy as np
 from dataclasses_json import dataclass_json
 from functools import lru_cache
 from time import time
+from numpy.typing import ArrayLike,NDArray
 
 
 @dataclass
@@ -16,14 +17,11 @@ class Instance:
     n_items: int
     gamma: int
     budget: float
-    profits: list[int]
-    costs: list[list[int]]
+    profits: ArrayLike  #Array of floats
+    costs: NDArray[np.float64]      #Array of tuples with lower_cost and upper_cost (n,2)
     polynomial_gains: dict[set[int],int]
-    optimal_solution: None | list[bool] = field(default=None)
-    optimal_objective: None | float = field(default=None)
-
-
-    #Estas cosas son para resolver de forma optima
+    optimal_solution: None | ArrayLike = field(default=None)
+    optimal_objective: None | np.float64         = field(default=None)
     
     @property
     @lru_cache
@@ -85,35 +83,53 @@ class Instance:
         with open(json_file,"r",encoding="utf8") as f:
             json_file = json.load(f)
         output = cls.from_dict(json_file)
+
         output.created_time = time()
         return output
 
     @classmethod
-    def from_dict(cls,json_file: str):
+    def from_dict(cls,json_file: dict):
         """Carga la instancia desde un archivo .json"""
         logging.info("Loading instance")
+        n_items = json_file['n_items']
         gamma = json_file['gamma']
         budget = json_file['budget']
-        profits = json_file['profits']
-        costs = json_file['costs']
+        profits = np.array(json_file['profits'])
+        costs = np.array(json_file['costs'])
         polynomial_gains = json_file['polynomial_gains']
-        n_items = json_file['n_items']
-        logging.info("simulation end")
-        return cls(n_items,gamma,budget,profits,costs,polynomial_gains)
+        instance = cls(n_items,gamma,budget,profits,costs,polynomial_gains)
+        instance.optimal_objective = json_file['optimal_objective']
+        instance.optimal_solution = np.array(json_file['optimal_solution'])
+        return instance
 
-    def save(self,folder_path: str | Path)-> None:
-        """Guarda la instancia en una ruta (Para guardar en el directorio de trabajo usar \"/\")"""
-        with open(folder_path + str(self) + ".json",'w',encoding="utf8") as file:
-            json.dump(self.__dict__,file)
+    def save(self, folder_path: str | Path) -> str:
+        """Guarda la instancia en una ruta 
+        (Para guardar en el directorio de trabajo usar \"/\")"""
+        json_output = self.to_json_string()
+        file_path = Path(folder_path) / f"In{self.n_items}g{self.gamma}#{abs(hash(self))}.json"
+        with open(file_path, "w", encoding="utf-8") as json_file:
+            json_file.write(json_output)
+        return file_path
 
-    def to_json_string(self)->str:
-        output = self.__dict__
-        a = output['optimal_solution']
-        if a is None:
-            return json.dumps(output)
-        else:
-            output['optimal_solution'] = a
-            return json.dumps(output)
+    def to_json_string(self) -> str:
+        """
+            Esta funcion retorna un json de la instancia, en un formato,
+            que pueda cargarse en el futuro, y además incluye la solucion optima.
+        """
+        output = {}
+        output['n_items'] = self.n_items
+        output['gamma'] = self.gamma
+        
+        
+        output['optimal_solution'] = None
+        if self.optimal_solution is not None:
+            output['optimal_solution'] = self.optimal_solution.tolist()
+        output['optimal_objective'] = self.optimal_objective
+        output['budget'] = self.budget
+        output['profits'] = self.profits.tolist()
+        output['costs'] = self.costs.tolist()
+        output['polynomial_gains'] = self.polynomial_gains
+        return json.dumps(output)
 
     @classmethod
     def generate(cls,n_items: int,gamma: int, seed=None)-> 'Instance':
@@ -122,14 +138,12 @@ class Instance:
             random.seed(43)
         else:
             random.seed(seed)
-        
         instance = Instance(None,None,None,None,None,None)
         instance.created_time = time()
         instance.n_items = n_items
         instance.gamma = gamma
         matrix_costs = np.zeros((n_items, 2), dtype=float)
         d = [0.3, 0.6, 0.9]
-
 
         for i in range(n_items):
             matrix_costs[i, 0] = random.uniform(1, 50)
@@ -162,9 +176,8 @@ class Instance:
                     elem = str(tuple(np.random.choice(items, i, replace=False)))
                     polynomial_gains[elem] = random.uniform(1, 100 / i)
 
-        array_profits = list(array_profits)
+        array_profits = array_profits
         matrix_costs = matrix_costs.reshape(n_items, 2)
-        matrix_costs = matrix_costs.tolist()
         instance.profits = array_profits
         instance.costs = matrix_costs
         instance.polynomial_gains = polynomial_gains
@@ -174,7 +187,18 @@ class Instance:
         return str(sha1(self.to_json_string().encode()).hexdigest())
 
     def __hash__(self) -> int:
-        return hash(self.__str__)
+        """El hash se obtiene del string que representa todos los parametros, sin tomar en cuenta
+            los valores de la solucion optima
+        """
+        output = {}
+        output['n_items'] = self.n_items
+        output['gamma'] = self.gamma
+        output['budget'] = self.budget
+        output['profits'] = self.profits.tolist()
+        output['costs'] = self.costs.tolist()
+        output['polynomial_gains'] = self.polynomial_gains
+        
+        return hash(str(sha1(json.dumps(output).encode()).hexdigest()))
 
     def __str__(self) -> str:
-        return f"Instance_{self.n_items}_{self.gamma}_{round(self.budget,3)}_{self.gains}_{self.created_time}"
+        return f"Instance({self.n_items},{self.gamma})#{hash(self)})"
