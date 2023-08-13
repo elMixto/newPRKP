@@ -36,12 +36,15 @@ class ItemBatchFeature(ABC):
 
 
 class IsInContSol(ItemBatchFeature):
-    """Resuelve la relajacion continua del problema de optimizacion y retorna la solucion para cada uno de los items, si se encuentra o no en la solucion"""
+    """
+    Resuelve la relajacion continua del problema de optimizacion y retorna la solucion para cada uno de los items, si se encuentra o no en la solucion
+    (Usa el solver cacheado para poder reconstruir la trainingdata de forma rapida)
+    """
     name = "IsInContSol"
     @staticmethod
     def batch_evaluate(instance: Instance) -> ArrayLike:
         from src.solvers.collection import SolverCollection,SolverConfig
-        return SolverCollection.gurobi(instance,SolverConfig.continous()).sol
+        return SolverCollection.gurobi_continous(instance).sol
     
 class IsInOptSol(ItemBatchFeature):
     """Resuelve la relajacion continua del problema de optimizacion y retorna la solucion para cada uno de los items, si se encuentra o no en la solucion"""
@@ -49,7 +52,7 @@ class IsInOptSol(ItemBatchFeature):
     @staticmethod
     def batch_evaluate(instance: Instance) -> ArrayLike:
         from src.solvers.collection import SolverCollection,SolverConfig
-        return SolverCollection.gurobi(instance,SolverConfig.optimal()).sol
+        return SolverCollection.gurobi_optimal(instance).sol
 
 
 class ProfitOverBudget(ItemSingleFeature,ItemBatchFeature):
