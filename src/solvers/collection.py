@@ -42,18 +42,29 @@ class SolverCollection:
     
     @staticmethod
     def gurobi(instance: Instance, solver_config: SolverConfig)->Solution:
-        o,sol,t =  SolverCollection.gurobi_remote(instance,solver_config)
-        instance.optimal_solution = list(sol)
-        instance.optimal_objective = o
-        return Solution(o,sol,t)
+        """Esta funcioncilla intenta resolver la instancia con las 2 funciones"""
+        
+        
+        try:
+            o,sol,t =  SolverCollection.gurobi_remote(instance,solver_config)
+            instance.optimal_solution = np.array(sol)
+            instance.optimal_objective = o
+            return Solution(o,sol,t)
+        except:
+            """
+            I know this is bad, but gurobi exceptions dont appear to work with my LSP :c
+            so even if it works correclty 
+            """
+            pass
+        
         try:
             o,sol,t = SolverCollection.gurobi_local(instance,solver_config)
-            instance.optimal_solution = torch.tensor(sol,dtype=torch.uint8)
+            instance.optimal_solution = np.array(sol)
             instance.optimal_objective = o
             return Solution(o,sol,t)
         except:
             pass
-
+        
     @staticmethod
     def baldo_GA(instance: Instance, n_chromosomes: int = 70, penalization: float = 0.03, weight: float = 0.6) -> Solution:
         start = time()
