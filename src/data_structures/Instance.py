@@ -12,28 +12,52 @@ from time import time
 from numpy.typing import ArrayLike,NDArray
 
 
-@dataclass
 class Instance:
-    n_items: int
-    gamma: int
-    budget: float
-    profits: ArrayLike  #Array of floats
-    costs: NDArray[np.float64]      #Array of tuples with lower_cost and upper_cost (n,2)
-    polynomial_gains: dict[set[int],int]
-    optimal_solution: None | ArrayLike = field(default=None)
-    optimal_objective: None | np.float64         = field(default=None)
-    
-    @property
-    @lru_cache
-    def gains(self):
-        return len(self.polynomial_gains)
+    def __init__(self,n_items: int,gamma: int,budget: float,profits: ArrayLike,
+                    costs: NDArray[np.float64],polynomial_gains: dict[set[int],int],
+                    optimal_solution: ArrayLike = None,optimal_objective: np.float64 = None, ):
+        self.n_items = n_items
+        self.budget = budget
+        self.gamma = gamma
+        self.profits = profits
+        self.costs = costs
+        self.polynomial_gains = polynomial_gains
+        self.syn_work = [key.replace("(","").replace(")","").replace("'","").split(",") for key in polynomial_gains.keys()]
+        self.synSet = [set(map(int,k)) for k in self.syn_work]
+        self.item_vect = np.linspace(1,self.n_items,self.n_items)
+        self.nominal_costs = np.array(self.costs[:,0])
+        self.total_nominal_costs = np.sum(self.nominal_costs)
+        self.upper_costs = np.array(self.costs[:,1])
+        self.costs_deltas = np.add(self.upper_costs,-1 * self.nominal_costs)
+        self.pol_keys = list(self.polynomial_gains.keys())
+        self.optimal_solution = optimal_solution
+        self.optimal_objective = optimal_objective
     
     def evaluate(self,sol):
-        """ calculate the score of each possible solution
-		Args: 
-			chromosome: a possible solution
-		Return: 
-			of: value of the objective function of this chromosome
+        """Faster eval function to train a model :D"""
+        synSet = self.synSet
+        sol = np.array(sol,dtype=np.uint32)
+        investments = np.multiply(sol,self.item_vect)
+        investments = np.array([ int(i) for i in investments if i > 0 ]) - 1
+        investments = np.sort(investments)
+        investments = investments.tolist()
+        investments.sort(key = lambda x: self.costs_deltas[x], reverse = True)
+        investments = np.array(investments)
+        upperCosts = np.sum([self.upper_costs[x] for x in investments[:self.gamma]])
+        nominalCosts = np.sum([self.nominal_costs[x] for x in investments[self.gamma:]])
+        total_costs = upperCosts + nominalCosts
+        if total_costs <= self.budget:
+            of = np.sum([self.profits[x] for x in investments]) - total_costs
+            investments=set(investments)
+            for i,syn in enumerate(synSet):
+                if syn.issubset(investments):
+                    of += self.polynomial_gains[self.pol_keys[i]]
+            return of
+        return -1
+
+    def baldo_evaluate(self,sol):
+        """ 
+        Baldos implementation
 		"""
         syn_work=[key.replace("(","").replace(")","").replace("'","").split(",") for key in self.polynomial_gains.keys()]
         synSet = [set(map(int,k)) for k in syn_work]
@@ -64,6 +88,15 @@ class Instance:
         cleaned_string = input_string.replace("(", "").replace(")", "").replace(" ", "")
         number_strings = cleaned_string.split(",")
         return set(int(num) for num in number_strings)
+    
+    @staticmethod
+    def key_to_tuple(k0):
+        input_string = k0
+        cleaned_string = input_string.replace("(", "").replace(")", "").replace(" ", "")
+        number_strings = cleaned_string.split(",")
+        output = [int(num) for num in number_strings]
+        output.sort()
+        return tuple(output)
     
     @lru_cache
     def precalcs(self):
@@ -98,8 +131,10 @@ class Instance:
         costs = np.array(json_file['costs'])
         polynomial_gains = json_file['polynomial_gains']
         instance = cls(n_items,gamma,budget,profits,costs,polynomial_gains)
-        instance.optimal_objective = json_file['optimal_objective']
-        instance.optimal_solution = np.array(json_file['optimal_solution'])
+        if 'optimal_objective' in json_file.keys():
+            instance.optimal_objective = json_file['optimal_objective']
+        if 'optimal_solution' in json_file.keys():
+            instance.optimal_solution = np.array(json_file['optimal_solution'])
         return instance
 
     def save(self, folder_path: str | Path) -> str:
@@ -132,31 +167,25 @@ class Instance:
         return json.dumps(output)
 
     @classmethod
-    def generate(cls,n_items: int,gamma: int, seed=None)-> 'Instance':
+    def generate(cls,n_items: int, gamma: int, seed = None)-> 'Instance':
         """Gamma is generally int(random.uniform(0.2, 0.6) * el)"""
-        if seed is None:
-            random.seed(43)
-        else:
+        if seed is not None:
             random.seed(seed)
-        instance = Instance(None,None,None,None,None,None)
-        instance.created_time = time()
-        instance.n_items = n_items
-        instance.gamma = gamma
+            np.random.seed(seed)
         matrix_costs = np.zeros((n_items, 2), dtype=float)
         d = [0.3, 0.6, 0.9]
-
         for i in range(n_items):
             matrix_costs[i, 0] = random.uniform(1, 50)
             matrix_costs[i, 1] = (1 + random.choice(d)) * matrix_costs[i, 0]
+
         array_profits = np.zeros((n_items), dtype=float)
-        
-        
         for i in range(n_items):
             array_profits[i] = random.uniform(0.8 * np.max(matrix_costs[:, 0]), 100)
 
         m = [2, 3, 4]
-        instance.budget = np.sum(matrix_costs[:, 0]) / random.choice(m)
+        budget = np.sum(matrix_costs[:, 0]) / random.choice(m)
         items = list(range(n_items))
+
         polynomial_gains = {}
         n_it = 0
         for i in range(2, n_items):
@@ -175,21 +204,65 @@ class Instance:
                     n_it += 1
                     elem = str(tuple(np.random.choice(items, i, replace=False)))
                     polynomial_gains[elem] = random.uniform(1, 100 / i)
-
-        array_profits = array_profits
         matrix_costs = matrix_costs.reshape(n_items, 2)
-        instance.profits = array_profits
-        instance.costs = matrix_costs
-        instance.polynomial_gains = polynomial_gains
-        return instance
+        return Instance(n_items,gamma,budget,array_profits,matrix_costs,polynomial_gains)
+    
+
+    #De aqui para abajo hay algunas cosillas para construir las instancias de manera mas correcta
+    @classmethod
+    def default(n_items: int, gamma: float):
+        """Gamma es la variacion en porcentaje"""
+        return Instance(n_items,gamma,None,None,None,None,None,None)
+    
+
+    def generate_costs(self, min: int, max: int):
+        """
+            Los parametros de min y max son para el generador de numeros aleatorios, es decir
+            para cada costo, se va a elegir un numero entre min y max, y con ese numero n: n-gamma y n+gamma va a ser
+            los costos para el item
+         """
+        #Una lista de pares ordenados :D
+        self.costs = np.zeros((self.n_items,2),dtype=float)
+
+        for i in range(self.n_items):
+            #Cota inferior
+            costo = random.uniform(1,100)
+
+            #Costo minimo
+            self.costs[i,0] = costo*(1-self.gamma)
+
+            #Costo maximo
+            self.costs[i,1] = costo*(1+self.gamma)
+
+        self.profits = np.zeros(self.n_items,dtype=float)
+
+    def generate_profits(self):
+        """
+            Profit class is used to define the size of the budget in base of the total costs posible
+            of the problem
+        """
+        
+        maximo_coste_minimo = np.max(self.costs[:, 0])
+        maximo_coste_maximo = np.max(self.costs[:, 1])
+        for i in range(self.n_items):
+            self.profits[i] = random.uniform(maximo_coste_minimo*0.8,maximo_coste_maximo*1.2)
+    
+
+    def set_budget(self, budget_class: int):
+        #Como rango para establecer el budget
+        self.budget = np.sum(self.costs[:,0]) / budget_class
 
     def _id(self):
         return str(sha1(self.to_json_string().encode()).hexdigest())
 
     def __hash__(self) -> int:
-        """El hash se obtiene del string que representa todos los parametros, sin tomar en cuenta
-            los valores de la solucion optima
         """
+            El hash se obtiene del string que representa todos los parametros, sin tomar en cuenta
+            los valores de la solucion optima
+
+            Idealmente cachear solo las cosas que cuestan mas en computar que este hash
+        """
+
         output = {}
         output['n_items'] = self.n_items
         output['gamma'] = self.gamma
@@ -197,7 +270,6 @@ class Instance:
         output['profits'] = self.profits.tolist()
         output['costs'] = self.costs.tolist()
         output['polynomial_gains'] = self.polynomial_gains
-        
         return hash(str(sha1(json.dumps(output).encode()).hexdigest()))
 
     def __str__(self) -> str:

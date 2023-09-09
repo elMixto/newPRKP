@@ -5,6 +5,9 @@ from numpy.typing import ArrayLike
 from functools import lru_cache
 #Si agrego las Features a data structures, voy a terminar creando dependencia circular
 
+
+
+
 class ItemSingleFeature(ABC):
     """Item feature es una feature que se puede obtener para aun item individual de una instancia"""
     @property
@@ -17,7 +20,8 @@ class ItemSingleFeature(ABC):
     def evaluate(instance: Instance, item: int) -> float:
         """Esta funcion debe tomar una instancia y un item, y retornar un flotante"""
         pass
-    
+
+
 class ItemBatchFeature(ABC):
     """Item Batch Feature, es una feature que se puede obtener para todos los items de una instancia,
         en una sola operacion, como por ejemplo resolver la versión relajada del problema."""
@@ -34,7 +38,24 @@ class ItemBatchFeature(ABC):
 
 ### Features
 
+class Budget(ItemBatchFeature):
+    name = "Budget"
+    @staticmethod
+    def batch_evaluate(instance: Instance) -> float:
+        """Normalized Budget?"""
+        return np.array([ instance.budget/instance.n_items  for i in range(instance.n_items)])
 
+
+class Noise(ItemBatchFeature):
+    """Para medir si otras features son tan utiles como el ruido"""
+    name = "Noise"
+    @staticmethod
+    def batch_evaluate(instance: Instance) -> ArrayLike:
+        """Average of """
+        salida = np.random.random(instance.n_items)
+        return salida
+    
+    
 class IsInContSol(ItemBatchFeature):
     """
     Resuelve la relajacion continua del problema de optimizacion y retorna la solucion para cada uno de los items, si se encuentra o no en la solucion
@@ -61,6 +82,7 @@ class ProfitOverBudget(ItemSingleFeature,ItemBatchFeature):
     @staticmethod
     def batch_evaluate(instance: Instance) -> ArrayLike:
         return np.array(instance.profits) / instance.budget
+    
     @staticmethod
     def evaluate(instance: Instance, item: int) -> float:
         return instance.profits[item]/instance.budget

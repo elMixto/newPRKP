@@ -32,13 +32,13 @@ class DLHeu:
 
     def create_data(self,instances: list[Instance],features: list[ItemSingleFeature | ItemBatchFeature] )->pd.DataFrame:
         """Toma las instancias, calcula todas las features y las empaqueta en un dataframe"""
+
         features_df = None
         for instance in instances:
             data = []
             for feature in features:
                 if issubclass(feature,ItemBatchFeature):
                     data.append(feature.batch_evaluate(instance))
-                    continue
                 elif issubclass(feature,ItemSingleFeature):
                     data.append([feature.evaluate(instance,x) for x in range(instance.n_items)])
                 else:
@@ -99,15 +99,8 @@ class DLHeu:
         return Solution(final_solution.o,final_solution.sol,time.time()-start)
 
     def load_model(self)->TabularLearner:
-        training_data = pd.read_csv("./models/DLHeuV1.csv")
+        training_data = pd.read_csv("./models/final_dl.csv")
         model = self.create_model(training_data)
-        model.load("DLHeuV1")
+        model.load("final_dl")
         return model
-
-
-    def create_and_save_model(self):
-        training_data = self.create_training_data([Instance.generate(i*10,20) for i in range(1,100,5)])
-        training_data.to_csv("./models/DLHeuV1.csv")
-        model = self.create_model(training_data)
-        model = self.train_learner(model)
 

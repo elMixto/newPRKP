@@ -50,10 +50,10 @@ class SolverCollection:
             instance.optimal_solution = np.array(sol)
             instance.optimal_objective = o
             return Solution(o,sol,t)
-        except:
+        except Exception as e:
             """
             I know this is bad, but gurobi exceptions dont appear to work with my LSP :c
-            so even if it works correclty 
+            so.
             """
             pass
         
@@ -62,16 +62,17 @@ class SolverCollection:
             instance.optimal_solution = np.array(sol)
             instance.optimal_objective = o
             return Solution(o,sol,t)
-        except:
+        except Exception as e:
             pass
     
-    @lru_cache(maxsize = None)
+
     @staticmethod
     def gurobi_optimal(instance: Instance)-> Solution:
         """This is a wrapper to have some solutions cached"""
+        if instance.optimal_objective is not None:
+            return Solution(instance.optimal_objective,np.array(list(map(abs,instance.optimal_solution))),1)
         return SolverCollection.gurobi(instance,SolverConfig.optimal())
     
-    @lru_cache(maxsize = None)
     @staticmethod
     def gurobi_continous(instance: Instance)-> Solution:
         """This is a wrapper to have some solutions cached"""
@@ -112,20 +113,31 @@ class SolverCollection:
         Falta manejar que el modelo que sea carga tenga las mismas
         features que la instancia generada
         """
+        """This is still experimental :D"""
         from src.data_structures.features import IsInContSol,ProfitOverBudget,LowerCostOverBudget
         from src.data_structures.features import UpperCostOverBudget
         from src.data_structures.features import CountPSynergiesOverNItems
-        from src.data_structures.features import IsInOptSol
+        from src.data_structures.features import IsInOptSol,Budget,Noise
         from fastai.learner import load_learner
         deepl = DLHeu(
-            data_features = [
-                UpperCostOverBudget,
-                LowerCostOverBudget,
-                ],
-            objective_features = [IsInOptSol],layers=[5,5,5,5]
+                [
+                    
+                    #ExperimentalFeature,
+                    Noise,
+                    Budget,
+                    UpperCostOverBudget,
+                    LowerCostOverBudget,
+                    ProfitOverBudget,
+                    #CountPSynergiesOverNItems,
+                    #StdOfItemProfits,
+                    #StdOfItemSyns,
+                    #IsInContSol,
+                 ],
+                [IsInOptSol],
+                [10,10]
             )
-        deepl.load_model()
-        return deepl.solve(instance)
+        learner = deepl.load_model()
+        return deepl.solve(instance,learner)
 
         
 
