@@ -49,9 +49,9 @@ class Instance:
         if total_costs <= self.budget:
             of = np.sum([self.profits[x] for x in investments]) - total_costs
             investments=set(investments)
-            for i,syn in enumerate(synSet):
-                if syn.issubset(investments):
-                    of += self.polynomial_gains[self.pol_keys[i]]
+            for i,syn in enumerate(synSet): #Por cada llave en polsyns
+                if syn.issubset(investments): #Checkeo si la llave es subconjunto de los investments
+                    of += self.polynomial_gains[self.pol_keys[i]] #Y si es subconjunto, retorno la cosa
             return of
         return -1
 
