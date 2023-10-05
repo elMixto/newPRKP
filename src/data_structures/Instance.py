@@ -11,7 +11,6 @@ from functools import lru_cache
 from time import time
 from numpy.typing import ArrayLike,NDArray
 
-
 class Instance:
     def __init__(self,n_items: int,gamma: int,budget: float,profits: ArrayLike,
                     costs: NDArray[np.float64],polynomial_gains: dict[set[int],int],
@@ -23,6 +22,13 @@ class Instance:
         self.costs = costs
         self.polynomial_gains = polynomial_gains
         self.syn_work = [key.replace("(","").replace(")","").replace("'","").split(",") for key in polynomial_gains.keys()]
+        self.syn_dict = dict()
+        for key,value in self.polynomial_gains.items():
+            key: list = key.replace("(","").replace(")","").replace("'","").split(",")
+            if "" in key:
+                key.remove("")       
+            key = tuple(map(int,key))
+            self.syn_dict[key] = value
         self.synSet = [set(map(int,k)) for k in self.syn_work]
         self.item_vect = np.linspace(1,self.n_items,self.n_items)
         self.nominal_costs = np.array(self.costs[:,0])
@@ -73,6 +79,7 @@ class Instance:
             of -= upperCosts
             of -= nominalCosts
             investments=set(investments)
+            
             for it in range(len(synSet)):
                 syn=synSet[it]
                 if syn.issubset(investments):
@@ -208,58 +215,44 @@ class Instance:
         return Instance(n_items,gamma,budget,array_profits,matrix_costs,polynomial_gains)
     
 
-    #De aqui para abajo hay algunas cosillas para construir las instancias de manera mas correcta
     @classmethod
-    def default(n_items: int, gamma: float):
-        """Gamma es la variacion en porcentaje"""
-        return Instance(n_items,gamma,None,None,None,None,None,None)
+    def generate_quadratic(cls,n_items: int, gamma: int, seed = None)-> 'Instance':
+        """Gamma is generally int(random.uniform(0.2, 0.6) * el)"""
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+        matrix_costs = np.zeros((n_items, 2), dtype=float)
+        d = [0.3, 0.6, 0.9]
+        for i in range(n_items):
+            matrix_costs[i, 0] = random.uniform(1, 50)
+            matrix_costs[i, 1] = (1 + random.choice(d)) * matrix_costs[i, 0]
+
+        array_profits = np.zeros((n_items), dtype=float)
+        for i in range(n_items):
+            array_profits[i] = random.uniform(0.8 * np.max(matrix_costs[:, 0]), 100)
+
+        m = [2, 3, 4]
+        budget = np.sum(matrix_costs[:, 0]) / random.choice(m)
+        polynomial_gains = {}
+        for i in range(n_items):
+            for j in range(n_items):
+                if i == j:
+                    continue
+                tupla = [i,j]
+                tupla.sort()
+                tupla = tuple(tupla)
+                if np.random.random() >= 0.9:
+                    polynomial_gains[str(tupla)] = np.random.random()
+        matrix_costs = matrix_costs.reshape(n_items, 2)
+        return Instance(n_items,gamma,budget,array_profits,matrix_costs,polynomial_gains)
     
-
-    def generate_costs(self, min: int, max: int):
-        """
-            Los parametros de min y max son para el generador de numeros aleatorios, es decir
-            para cada costo, se va a elegir un numero entre min y max, y con ese numero n: n-gamma y n+gamma va a ser
-            los costos para el item
-         """
-        #Una lista de pares ordenados :D
-        self.costs = np.zeros((self.n_items,2),dtype=float)
-
-        for i in range(self.n_items):
-            #Cota inferior
-            costo = random.uniform(1,100)
-
-            #Costo minimo
-            self.costs[i,0] = costo*(1-self.gamma)
-
-            #Costo maximo
-            self.costs[i,1] = costo*(1+self.gamma)
-
-        self.profits = np.zeros(self.n_items,dtype=float)
-
-    def generate_profits(self):
-        """
-            Profit class is used to define the size of the budget in base of the total costs posible
-            of the problem
-        """
-        
-        maximo_coste_minimo = np.max(self.costs[:, 0])
-        maximo_coste_maximo = np.max(self.costs[:, 1])
-        for i in range(self.n_items):
-            self.profits[i] = random.uniform(maximo_coste_minimo*0.8,maximo_coste_maximo*1.2)
-    
-
-    def set_budget(self, budget_class: int):
-        #Como rango para establecer el budget
-        self.budget = np.sum(self.costs[:,0]) / budget_class
-
     def _id(self):
         return str(sha1(self.to_json_string().encode()).hexdigest())
 
     def __hash__(self) -> int:
         """
             El hash se obtiene del string que representa todos los parametros, sin tomar en cuenta
-            los valores de la solucion optima
-
+            los valores de la solucion optima.
             Idealmente cachear solo las cosas que cuestan mas en computar que este hash
         """
 
@@ -273,4 +266,4 @@ class Instance:
         return hash(str(sha1(json.dumps(output).encode()).hexdigest()))
 
     def __str__(self) -> str:
-        return f"Instance({self.n_items},{self.gamma})#{hash(self)})"
+        return f"Instance({self.n_items},{self.gamma},#{hash(self)})"
