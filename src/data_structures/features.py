@@ -5,9 +5,6 @@ from numpy.typing import ArrayLike
 from functools import lru_cache
 #Si agrego las Features a data structures, voy a terminar creando dependencia circular
 
-
-
-
 class ItemSingleFeature(ABC):
     """Item feature es una feature que se puede obtener para aun item individual de una instancia"""
     @property
