@@ -37,15 +37,11 @@ class Net(nn.Module):
         self.many = nn.Sequential(
             nn.Linear(entrada, hidden_size),
             nn.Linear(hidden_size,salida),
-            nn.Sigmoid()
-            
-        )
+            nn.Sigmoid())
 
     def forward(self, x):   
         x = self.many(x)
         return x
-
-
 
 def tupla_a_vector_binario(tupla,size):
     output = np.zeros(size)
