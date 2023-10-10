@@ -35,6 +35,14 @@ class ItemBatchFeature(ABC):
 
 ### Features
 
+class NItems(ItemBatchFeature):
+    name = "NItems"
+
+    @staticmethod
+    def batch_evaluate(instance: Instance) -> ArrayLike:
+        return np.array([instance.n_items/10000 for i in range(instance.n_items)])
+
+
 class Budget(ItemBatchFeature):
     name = "Budget"
     @staticmethod
@@ -131,3 +139,7 @@ class CountPSynergiesOverNItems(ItemBatchFeature):
     @staticmethod
     def evaluate(instance: Instance,item: int) -> ArrayLike:
         return CountPSynergiesOverNItems.syns(instance)[item,1]/instance.n_items
+    
+
+class SynergieReduction(ItemBatchFeature):
+    pass

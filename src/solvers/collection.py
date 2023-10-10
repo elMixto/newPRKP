@@ -47,8 +47,9 @@ class SolverCollection:
         """Esta funcioncilla intenta resolver la instancia con las 2 funciones"""
         try:
             o,sol,t =  SolverCollection.gurobi_remote(instance,solver_config)
-            instance.optimal_solution = np.array(sol)
-            instance.optimal_objective = o
+            if not solver_config.continous:
+                instance.optimal_solution = np.array(sol)
+                instance.optimal_objective = o
             return Solution(o,sol,t)
         except Exception as e:
             """
@@ -104,6 +105,25 @@ class SolverCollection:
         final_gurobi = SolverCollection.gurobi(instance,discrete_config)
         return Solution(final_gurobi.o,final_gurobi.sol,time()-start)
 
+
+    @staticmethod
+    def DL2(instance: Instance):
+        from src.solvers.DLHEU2 import DHEU
+        from src.data_structures.features import Budget,ProfitOverBudget,LowerCostOverBudget,UpperCostOverBudget
+        from src.data_structures.features import NItems,Noise,ItemBatchFeature,IsInContSol
+        features: list[ItemBatchFeature] = [
+            #Budget,
+            ProfitOverBudget,
+            LowerCostOverBudget,
+            UpperCostOverBudget,
+            IsInContSol,
+            #NItems,
+            #Noise,
+            ]
+        heu = DHEU(features)
+        heu.load(Path("/home/mixto/repositories/PRKP/models/DHEUV2.model"))
+        preds = heu.evaluate(instance)
+        print(preds)
 
     
 

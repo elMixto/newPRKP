@@ -76,7 +76,6 @@ def solve_polynomial_knapsack(instance: Instance, solver_config: SolverConfig):
         for i in k:
             key.append(int(i))
         key=tuple(key)
-        #print("",dict_data['polynomial_gains'][str(key)],"\n",key,"\n")
         if instance.polynomial_gains[str(key)] > 0:
             model.addConstr(
                 quicksum(X[i] for i in key) >= len(key) * Z[h],
